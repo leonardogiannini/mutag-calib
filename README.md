@@ -75,18 +75,48 @@ These files can be generated using the interactive `dataset-discovery-cli` comma
 Datasets to be included for Run 3:
 
 - [x] 2022+2023
-- [ ] 2024
+- [x] 2024 (`RunIII2024Summer24NanoAODv15` MC, `MINIv6NANOv15` data)
+  - MC
+    - [x] QCD_MuEnriched
+    - [x] V+jets (new HT binning: `Wto2Q-3Jets_Bin-HT-*`, `Zto2Q-4Jets_Bin-HT-*`)
+    - [x] Single top fully hadronic and semileptonic
+    - [x] ttbar fully hadronic
+  - Data
+    - [x] BTagMu (eras C to I)
+  - MC for systematics
+    - [x] QCD_HT
+  - Signal (for the signal-shape systematic and validations)
+    - [x] ggF HH(4b) (`datasets_definitions_signal_HHbbbb.json`)
+    - [ ] ggF HH(bbγγ) and HH(bbττ)
+    - [ ] ggH(bb) and ggH(cc)
+- [ ] 2025
+  - Data
+    - [x] BTagMu (eras C to G, `PromptBTVNano`, in `datasets_definitions_DATA_BTagMu_2025.json`)
   - MC
     - [ ] QCD_MuEnriched
     - [ ] V+jets
     - [ ] Single top fully hadronic and semileptonic
     - [ ] ttbar fully hadronic
-  - Data
-    - [] BTagMu
   - MC for systematics
-    - [x] QCD_HT
-  - Validations
-    - [ ] ggH(bb) and ggH(cc) signals (for validations)
+    - [ ] QCD_HT
+  - Signal
+    - [ ] HH signals
+- [ ] 2026
+  - Data
+    - [ ] BTagMu
+  - MC
+    - [ ] QCD_MuEnriched
+    - [ ] V+jets
+    - [ ] Single top fully hadronic and semileptonic
+    - [ ] ttbar fully hadronic
+  - MC for systematics
+    - [ ] QCD_HT
+  - Signal
+    - [ ] HH signals
+
+> [!NOTE]
+>
+> No dedicated 2025 MC is available yet. The 2025 configurations (`mutag_calib/configs/pt_reweighting/ptreweighting_2025.py`, `mutag_calib/configs/fit_templates/fit_templates_HHbbgg_2025_glopart.py`) run the 2025 data against the 2024 MC, reweighted to the 2025 pileup profile. The datacards for this setup are built with the `--combined-years` option of `create_datacards.py`.
 
 ⚠️ **Warning:** before entering in the singularity image, you need to run the command to get the GRID certificate:
 ```bash
@@ -103,6 +133,14 @@ pocket-coffea build-datasets --cfg datasets/datasets_definitions_TTto4Q_run3.jso
 pocket-coffea build-datasets --cfg datasets/datasets_definitions_singletop_semileptonic.json -o
 pocket-coffea build-datasets --cfg datasets/datasets_definitions_singletop_fullyhadronic.json -o
 pocket-coffea build-datasets --cfg datasets/datasets_definitions_singletop_s-channel.json -o
+pocket-coffea build-datasets --cfg datasets/datasets_definitions_QCD_HT_run3.json -o
+pocket-coffea build-datasets --cfg datasets/datasets_definitions_signal_HHbbbb.json -o
+pocket-coffea build-datasets --cfg datasets/datasets_definitions_DATA_BTagMu_2025.json -o
+```
+
+Alternatively, the `build_datasets.sh` script in the root of the repository loops over all the `datasets/datasets_definitions*.json` files (note that it restricts the sites to `T[123]_CH_\w+`):
+```bash
+source build_datasets.sh
 ```
 
 Restricting the dataset source in Europe (recommended for working from lxplus):
@@ -123,12 +161,14 @@ For more detailed instructions on how to create datasets in PocketCoffea, please
 Once the json datasets are created, the configuration files have to be updated to run on the newly defined datasets.
 
 ### Step 0: update the trigger paths
-In order to run the analysis on Run 3 data, the trigger paths specified in the `mutag_calib/configs/params/triggers.yaml` file have to be updated with the Run 3 trigger paths. Trigger paths included:
+In order to run the analysis on Run 3 data, the trigger paths specified in the `mutag_calib/configs/params/triggers_run3.yaml` file have to be updated with the Run 3 trigger paths. Trigger paths included:
 - [x] `2022_preEE`
 - [x] `2022_postEE`
 - [x] `2023_preBPix`
 - [x] `2023_postBPix`
 - [x] `2024`
+- [x] `2025`
+- [ ] `2026`
 
 ### Step 1: compute 3D reweighting based on jet $p_T$, $\eta$, $\tau_{21}$
 Run jobs on DATA, QCD, V+jets and top datasets:
@@ -213,7 +253,7 @@ The script will create a folder `fit_templates/datacards` containing a system of
 ```bash
 ├── 2022_postEE
 │   ├── msd-30to210_Pt-300toInf_particleNet_XbbVsQCD-HHbbgg
-│   │   ├── tau21_0p20
+│   │   ├── tau21_0p15
 │   │   │   ├── combine_cards.sh
 │   │   │   ├── fail
 │   │   │   │   ├── datacard.txt
@@ -222,7 +262,7 @@ The script will create a folder `fit_templates/datacards` containing a system of
 │   │   │   │   ├── datacard.txt
 │   │   │   │   └── shapes.root
 │   │   │   └── passfail_ratio.yaml
-│   │   ├── tau21_0p25
+│   │   ├── tau21_0p30
 │   │   │   ├── combine_cards.sh
 │   │   │   ├── fail
 │   │   │   │   ├── datacard.txt
@@ -231,8 +271,23 @@ The script will create a folder `fit_templates/datacards` containing a system of
 │   │   │   │   ├── datacard.txt
 │   │   │   │   └── shapes.root
 │   │   │   └── passfail_ratio.yaml
+│   │   ├── tau21_0p30_reweight
+│   │   └── tau21_1p00
 ```
 The datacards for the pass and fail regions of the tagger are stored in separate subfolders of the $\tau_{21}$ folder, `pass` and `fail`.
+
+Datacards are produced for three $\tau_{21}$ cuts: the nominal one (`tau21_0p30`) and the two variations `tau21_0p15` and `tau21_1p00` (no cut). The `tau21_0p30_reweight` folder contains the nominal datacards with the MC reweighted to data in the inclusive pass+fail region, used for the Data / MC reweighting systematic. Only the nominal datacards (`tau21_0p30` and `tau21_0p30_reweight`) contain the profiled $\tau_{21}$ nuisances, and only `tau21_0p30` contains the signal-shape nuisance (see [Systematic uncertainties](#systematic-uncertainties)).
+
+The most relevant options of `create_datacards.py` are:
+
+| Option | Description |
+|--------|-------------|
+| `--no-tau21-var` | Do not add the profiled `tau21_var_pass` / `tau21_var_fail` shape nuisances (use the external $\tau_{21}$ uncertainty instead). |
+| `--no-sigsyst` | Do not add the `signal_syst_pass` signal-shape nuisance. Needed when the input file contains no HH signal sample: by default the script stops if none is found. |
+| `--rebin-max-relerr X` | Merge consecutive bins of each channel until the total MC at the nominal $\tau_{21}$ cut has a relative statistical uncertainty below `X`. The same binning is applied to all processes, data and $\tau_{21}$ points. |
+| `-f`, `--filter-category` | Build only the categories whose name contains the given substring. |
+| `--category-prefix` | Build only the categories whose name starts with the given prefix (default `msd`). |
+| `--combined-years` | Treat all the years as a single measurement (e.g. 2025 data + 2024 MC). |
 
 ### Step 4: Run combine fit
 In order to run the maximum likelihood fit to extract the AK8 jet scale factors, it is necessary to use the [Combine](https://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/latest/) package. This package is based on RooFit and it runs outside of the Python environment used for the production of the fit templates. A dedicated CMSSW installation needs to be setup to use the Combine statistical tool.
@@ -284,20 +339,49 @@ The script create_datacards.py defines the following systematic uncertainties in
 | sf_partonshower_fsr         | Shape uncertainty from final-state radiation (FSR) parton-shower variations.                            |
 | AK8PFPuppi_JER              | Shape uncertainty from AK8 PFPuppi jet energy resolution (JER) variations.                              |
 | AK8PFPuppi_JES_Total        | Shape uncertainty from AK8 PFPuppi total jet energy scale (JES) variations.                             |
-| light_norm                  | 20% normalization (lnN) uncertainty on the light-flavour QCD component.                           |
-| c_norm                      | 20% normalization (lnN) uncertainty on the charm-flavour QCD component.                           |
+| tau21_var_pass, tau21_var_fail | Profiled shape uncertainty on the choice of the tau21 cut, one uncorrelated nuisance per region. Only in the nominal (tau21 < 0.3) datacards. Disabled with `--no-tau21-var`. |
+| signal_syst_pass            | Shape uncertainty on the b process in the pass region, accounting for the shape difference between the signal and its proxy. Only in the nominal (tau21 < 0.3) datacards. Disabled with `--no-sigsyst`. |
+
+The `light_norm` and `c_norm` lnN uncertainties are no longer included in the datacards.
+
+**Profiled $\tau_{21}$ uncertainty (`tau21_var_pass`, `tau21_var_fail`).** The dependence of the SF on the $\tau_{21}$ cut is included in the fit as a shape nuisance, as an alternative to the external $\tau_{21}$ uncertainty described below. For each MC process, the Down and Up templates are the templates obtained with $\tau_{21}$ < 0.15 and $\tau_{21}$ < 1.0 (no cut), rescaled to the nominal yield of the process, so that the variation is shape-only. The pass and fail regions have separate nuisance parameters. In the reweighted datacards the same data/MC weights of the nominal cut are applied to the varied templates.
+
+**Signal-shape uncertainty (`signal_syst_pass`).** The b-flavour QCD component is used as a proxy of the signal (e.g. HH→4b), and this nuisance covers the difference between the two shapes of the fit variable. The Up template is the b template reweighted bin by bin with the ratio of the normalized signal and proxy shapes, where the signal shape is taken without any $\tau_{21}$ cut. The Down template is the mirrored one (2 × nominal − Up, clipped at zero). Both are rescaled to the nominal yield. To limit the effect of MC fluctuations, the ratio is computed on groups of consecutive bins in which both the signal and the proxy have a relative statistical uncertainty below 30% (or below the value passed to `--rebin-max-relerr`). The nuisance is applied to the pass region only and is not included in the reweighted datacards. The signal samples are those with `HH` in the sample name, and they need to be in the input `.coffea` file.
 
 In addition, the following "external" systematic uncertainties are summed in quadrature to the SF obtained from the Combine fit:
 
 | External systematic uncertainty       | Description                                                                                       |
 |-----------------------------|---------------------------------------------------------------------------------------------------|
-| tau21                        | Maximum difference between the nominal SF (tau21 < 0.3) and any of the alternative SF (tau21 < 0.2, 0.25, 0.35, 0.4), to account for the dependence on the tau21 cut.        |
-| Data / MC reweighting                        | Difference between the nominal SF (tau21 < 0.3) and the SF obtained by reweighting the fit variable in the inclusive pass+fail region, to account for the residual mismodelling in the fit variable.        |
+| tau21                        | Maximum difference between the nominal SF (tau21 < 0.3) and any of the alternative SF (tau21 < 0.15, 1.0), to account for the dependence on the tau21 cut. Alternative to the profiled `tau21_var_pass` / `tau21_var_fail` nuisances: use one or the other, not both.        |
+| Data / MC reweighting                        | Difference between the nominal SF (tau21 < 0.3) and the SF obtained by reweighting the fit variable in the inclusive pass+fail region, to account for the residual mismodelling in the fit variable. Always included.        |
+
+The treatment of the $\tau_{21}$ uncertainty is chosen with the `--error-method` option of `make_SFs_plots.py` (see [Step 5](#step-5-save-the-scale-factors-in-a-json-file)):
+
+- `internalised` (default): the $\tau_{21}$ uncertainty is the profiled nuisance, already contained in the fit error, and nothing is added. In this case only the nominal point needs to be fitted, and the `--only-nominal` option of `run_fit_results.py` and `run_all_combine_plots.py` skips the other $\tau_{21}$ folders.
+- `tau21`: the external $\tau_{21}$ uncertainty is added in quadrature. The datacards should then be built with `--no-tau21-var`, all the $\tau_{21}$ points have to be fitted, and the varied cuts have to be listed in `TAU21_VALUES` at the top of `make_SFs_plots.py` (by default it contains only the nominal 0.30, which gives a zero external uncertainty).
+
+### Step 5: Save the scale factors in a JSON file
+Once the fits have run in all the categories (e.g. with `mutag_calib/scripts/run_fit_results.py`), the script `make_SFs_plots.py` collects the `fitResults.json` files, produces the SF plots and LaTeX tables, and saves the scale factors in a [correctionlib](https://cms-nanoaod.github.io/correctionlib/) JSON file:
+```bash
+python mutag_calib/scripts/make_SFs_plots.py fit_templates/datacards -o plots_SF --SF-type b \
+    --error-method internalised \
+    --wp-config mutag_calib/configs/params/mutag_calibration_HHbbbb_2024.yaml --config-year 2024
+```
+The categories to be combined into one set of SFs are defined in the `ALLOWED_CATEGORIES_SF_PLOT` dictionary in `mutag_calib/scripts/allowed_categories.py`: one JSON file is saved for each entry of the dictionary. The same file defines `ALLOWED_CATEGORIES`, the list of categories processed by `run_combine_cards.py`, `run_fit_results.py` and `run_all_combine_plots.py`.
+
+The output file is `bbtag_AK8_scale_factors_for_<tagger>_<collection>_<error-method>.json` (a gzipped copy is saved next to it) and contains two corrections:
+
+| Correction | Inputs | Output |
+|------------|--------|--------|
+| `<tagger>_<SF-type>_wp_values` | `working_point` | Lower edge of the tagger score window of the working point, read from the `--wp-config` file. |
+| `<tagger>_<SF-type>_<collection>` | `systematic`, `working_point`, `pt` | Scale factor. |
+
+The `systematic` input can be `central`, `up` / `down` (total uncertainty: fit, Data / MC reweighting and the chosen $\tau_{21}$ method summed in quadrature), or one of the single components `up_rew` / `down_rew`, `up_tau21` / `down_tau21` and `up_internalised` / `down_internalised`. Outside the calibrated $p_T$ range and working points the SF is 1.0 with an uncertainty of 15% for the b SF and 40% for the c SF.
 
 
 ## Simultaneous fit of the Loose/Medium/Tight working points
 
-Steps 3 and 4 above calibrate **one** working point at a time, with a two-region
+Steps 3 to 5 above calibrate **one** working point at a time, with a two-region
 pass/fail fit per WP. The simultaneous fit measures all three GloParT working
 points in a single likelihood instead.
 
